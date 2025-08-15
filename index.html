@@ -1,0 +1,907 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>استيراد إكسل مع تحويل العملة</title>
+    
+    <!-- PrimeIcons CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/primeicons@6.0.1/primeicons.css">
+    
+    <!-- XLSX Library -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .excel-import-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .iframe-container {
+            width: 100%;
+            max-width: 100%;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 15px;
+            border: 2px solid #dee2e6;
+            box-sizing: border-box;
+        }
+
+        .responsive-iframe {
+            width: 100%;
+            height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border: none;
+            box-sizing: border-box;
+            overflow: hidden;
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .responsive-iframe::-webkit-scrollbar {
+            display: none;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        }
+
+        .header h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .upload-section {
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2rem;
+        }
+
+        .file-upload {
+            position: relative;
+        }
+
+        .file-upload-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+
+        .file-upload-label:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .file-upload-label i {
+            font-size: 1.2rem;
+        }
+
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .currency-controls {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .manual-rate-control {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            align-items: center;
+            text-align: center;
+        }
+
+        .rate-input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .rate-input-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 1.1rem;
+        }
+
+        .rate-input {
+            padding: 0.75rem 1rem;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            background: white;
+            font-size: 1rem;
+            color: #2c3e50;
+            width: 200px;
+            text-align: center;
+            /* direction: ltr; */
+            transition: border-color 0.3s ease;
+        }
+
+        .rate-input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .rate-input::placeholder {
+            color: #95a5a6;
+            direction: rtl;
+        }
+
+        .rate-info {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+            max-width: 300px;
+            line-height: 1.4;
+        }
+
+        .fetch-rate-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+            margin-left: 1rem;
+        }
+
+        .fetch-rate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .fetch-rate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .fetch-rate-btn i {
+            font-size: 1.2rem;
+        }
+
+        .error-message {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: #fee;
+            border: 1px solid #fcc;
+            border-radius: 8px;
+            color: #c33;
+            margin-bottom: 1rem;
+        }
+
+        .error-message i {
+            font-size: 1.2rem;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 2rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .loading i {
+            font-size: 1.5rem;
+        }
+
+        .results-section {
+            margin-top: 2rem;
+        }
+
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .results-header h3 {
+            color: #2c3e50;
+            margin: 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(17, 153, 142, 0.3);
+        }
+
+        .download-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(17, 153, 142, 0.4);
+        }
+
+        .download-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .download-btn i {
+            font-size: 1.2rem;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            background: white;
+        }
+
+        .products-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .products-table th, .products-table td {
+            padding: 1rem;
+            text-align: right;
+            border-bottom: 1px solid #e1e8ed;
+        }
+
+        .products-table th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .products-table tr {
+            transition: background-color 0.3s ease;
+            background-color: #2c3e50;
+        }
+
+        .products-table tr:hover {
+            background-color: #34495e;
+        }
+
+        .products-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .products-table td {
+            color: white;
+        }
+
+        .loading-price {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            color: #667eea;
+        }
+
+        .loading-price i {
+            font-size: 0.8rem;
+        }
+
+        .instructions {
+            margin-top: 3rem;
+        }
+
+        .instruction-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(102, 126, 234, 0.3);
+        }
+
+        .instruction-card h4 {
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .instruction-card ol {
+            margin: 0;
+            padding-right: 1.5rem;
+        }
+
+        .instruction-card li {
+            margin-bottom: 0.75rem;
+            line-height: 1.6;
+        }
+
+        .instruction-card ul {
+            margin-top: 0.5rem;
+            margin-bottom: 0;
+            padding-right: 1.5rem;
+        }
+
+        .instruction-card ul li {
+            margin-bottom: 0.25rem;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .excel-import-container {
+                padding: 1rem;
+                margin: 1rem;
+            }
+
+            .iframe-container {
+                padding: 0.75rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .responsive-iframe {
+                height: 250px;
+            }
+
+            .header h2 {
+                font-size: 2rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+
+            .upload-section {
+                gap: 1rem;
+            }
+
+            .file-upload {
+                width: 100%;
+            }
+
+            .file-upload-label {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .currency-controls {
+                flex-direction: column;
+                gap: 1rem;
+            }
+
+            .manual-rate-control {
+                width: 100%;
+                align-items: center;
+            }
+
+            .rate-input-group {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .rate-input {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .rate-info {
+                max-width: 100%;
+            }
+
+            .results-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .action-buttons {
+                justify-content: center;
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+
+            .download-btn {
+                justify-content: center;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .excel-import-container {
+                padding: 0.75rem;
+            }
+
+            .iframe-container {
+                padding: 0.5rem;
+                margin-bottom: 1rem;
+            }
+
+            .responsive-iframe {
+                height: 200px;
+            }
+
+            .header h2 {
+                font-size: 1.5rem;
+            }
+
+            .header p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="excel-import-container">
+        <div class="iframe-container">
+            <iframe 
+                src="https://sp-today.com/currency/us_dollar/city/damascus" 
+                frameborder="0" 
+                class="responsive-iframe"
+                title="Live USD to SYR Exchange Rates"
+                scrolling="no">
+            </iframe>
+        </div>
+
+        <div class="header">
+            <h2>استيراد إكسل مع تحويل العملة</h2>
+            <p>قم بتحميل ملف إكسل يحتوي على المنتجات والأسعار لتحويلها إلى عملات مختلفة</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="file-upload">
+                <label for="fileInput" class="file-upload-label">
+                    <i class="pi pi-upload"></i>
+                    اختر ملف إكسل
+                </label>
+                <input 
+                    type="file" 
+                    id="fileInput" 
+                    accept=".xlsx,.xls" 
+                    class="file-input">
+            </div>
+
+            <div class="currency-controls">
+                <div class="manual-rate-control">
+                    <div class="rate-input-group">
+                        <label for="manualRate">سعر صرف الدولار إلى الليرة السورية:</label>
+                        <input 
+                            type="number" 
+                            id="manualRate"
+                            placeholder="أدخل سعر الصرف (مثال: 13000)"
+                            class="rate-input"
+                            step="0.01"
+                            min="0">
+                    </div>
+                    <div class="rate-info">
+                        <small>أدخل سعر صرف الدولار الحالي إلى الليرة السورية لتحويل أسعارك</small>
+                    </div>
+                </div>
+                <!-- <button id="fetchRateBtn" class="fetch-rate-btn">
+                    <i class="pi pi-refresh"></i>
+                    جلب السعر الحالي
+                </button> -->
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message hidden">
+            <i class="pi pi-exclamation-triangle"></i>
+            <span id="errorText"></span>
+        </div>
+
+        <div id="loading" class="loading hidden">
+            <i class="pi pi-spin pi-spinner"></i>
+            Converting prices...
+        </div>
+
+        <div id="resultsSection" class="results-section hidden">
+            <div class="results-header">
+                <h3 id="resultsTitle">المنتجات المحولة (0 منتج)</h3>
+                <!-- <div class="action-buttons">
+                    <button id="downloadBtn" class="download-btn">
+                        <i class="pi pi-download"></i>
+                        تحميل إكسل
+                    </button>
+                </div> -->
+            </div>
+
+            <div class="table-container">
+                <table class="products-table">
+                    <thead>
+                        <tr>
+                            <th>اسم المنتج</th>
+                            <th>السعر (دولار)</th>
+                            <th>السعر (ليرة سورية)</th>
+                            <th>سعر البيع (ليرة سورية)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="instructions" class="instructions">
+            <div class="instruction-card">
+                <h4>التعليمات:</h4>
+                <ol>
+                    <li>قم بإعداد ملف إكسل يحتوي على عمودين:
+                        <ul>
+                            <li><strong>العمود أ:</strong> أسماء المنتجات</li>
+                            <li><strong>العمود ب:</strong> الأسعار بالدولار</li>
+                        </ul>
+                    </li>
+                    <li>قم بتحميل ملف الإكسل باستخدام الزر أعلاه</li>
+                    <li>أدخل سعر صرف الدولار إلى الليرة السورية أو استخدم "جلب السعر الحالي"</li>
+                    <li>شاهد الأسعار المحولة في الجدول أدناه</li>
+                    <li>قم بتحميل النتائج كملف إكسل جديد</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ExcelImportApp {
+            constructor() {
+                this.products = [];
+                this.manualRate = 0;
+                this.isLoading = false;
+                this.errorMessage = '';
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.loadStoredData();
+            }
+
+            initializeElements() {
+                this.fileInput = document.getElementById('fileInput');
+                this.manualRateInput = document.getElementById('manualRate');
+                this.fetchRateBtn = document.getElementById('fetchRateBtn'); // May be null if commented out
+                this.errorMessageDiv = document.getElementById('errorMessage');
+                this.errorText = document.getElementById('errorText');
+                this.loadingDiv = document.getElementById('loading');
+                this.resultsSection = document.getElementById('resultsSection');
+                this.resultsTitle = document.getElementById('resultsTitle');
+                this.productsTableBody = document.getElementById('productsTableBody');
+                this.downloadBtn = document.getElementById('downloadBtn'); // May be null if commented out
+                this.instructionsDiv = document.getElementById('instructions');
+            }
+
+            bindEvents() {
+                this.fileInput.addEventListener('change', (e) => this.onFileSelected(e));
+                this.manualRateInput.addEventListener('input', () => this.onManualRateChange());
+                
+                // Only bind events if elements exist (not commented out)
+                if (this.fetchRateBtn) {
+                    this.fetchRateBtn.addEventListener('click', () => this.fetchLiveRate());
+                }
+                if (this.downloadBtn) {
+                    this.downloadBtn.addEventListener('click', () => this.downloadConvertedData());
+                }
+            }
+
+            loadStoredData() {
+                // Load stored rate
+                const storedRate = localStorage.getItem('syr_exchange_rate');
+                if (storedRate) {
+                    this.manualRate = parseFloat(storedRate);
+                    this.manualRateInput.value = this.manualRate;
+                }
+
+                // Load stored products
+                const storedProducts = localStorage.getItem('excel_products');
+                if (storedProducts) {
+                    try {
+                        this.products = JSON.parse(storedProducts);
+                        console.log('Loaded products from localStorage:', this.products);
+                        
+                        // Convert prices back to numbers
+                        this.products.forEach(product => {
+                            product.originalPrice = parseFloat(product.originalPrice);
+                            if (product.convertedPrice) {
+                                product.convertedPrice = parseFloat(product.convertedPrice);
+                            }
+                            if (product.sellingPrice) {
+                                product.sellingPrice = parseFloat(product.sellingPrice);
+                            }
+                        });
+                        
+                        // Display products after DOM is ready
+                        this.displayProducts();
+                    } catch (error) {
+                        console.error('Error loading stored products:', error);
+                        this.products = [];
+                    }
+                }
+            }
+
+            saveRateToStorage() {
+                if (this.manualRate > 0) {
+                    localStorage.setItem('syr_exchange_rate', this.manualRate.toString());
+                }
+            }
+
+            saveProductsToStorage() {
+                if (this.products.length > 0) {
+                    localStorage.setItem('excel_products', JSON.stringify(this.products));
+                }
+            }
+
+            onFileSelected(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.parseExcelFile(file);
+                }
+            }
+
+            parseExcelFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+
+                        this.products = [];
+                        // Skip header row and process data
+                        for (let i = 1; i < jsonData.length; i++) {
+                            const row = jsonData[i];
+                            if (row && row.length >= 2) {
+                                this.products.push({
+                                    name: row[0] || '',
+                                    originalPrice: parseFloat(row[1]) || 0,
+                                    currency: 'USD'
+                                });
+                            }
+                        }
+
+                        if (this.products.length > 0) {
+                            this.saveProductsToStorage();
+                            this.convertPrices();
+                            this.displayProducts();
+                        }
+                    } catch (error) {
+                        this.showError('خطأ في قراءة ملف الإكسل. يرجى التحقق من التنسيق.');
+                        console.error('Excel parsing error:', error);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            }
+
+            convertPrices() {
+                if (this.products.length === 0) return;
+
+                this.setLoading(true);
+                this.clearError();
+
+                if (this.manualRate > 0) {
+                    // Use manual rate
+                    this.products.forEach(product => {
+                        product.convertedPrice = product.originalPrice * this.manualRate;
+                        // Calculate selling price with 20% markup
+                        product.sellingPrice = product.convertedPrice * 1.2;
+                    });
+                    this.saveRateToStorage();
+                    this.saveProductsToStorage();
+                    this.setLoading(false);
+                } else {
+                    this.showError('يرجى إدخال سعر صرف صحيح لتحويل الأسعار.');
+                    this.setLoading(false);
+                }
+            }
+
+            onManualRateChange() {
+                this.manualRate = parseFloat(this.manualRateInput.value) || 0;
+                if (this.products.length > 0 && this.manualRate > 0) {
+                    this.convertPrices();
+                    this.displayProducts();
+                }
+            }
+
+            async fetchLiveRate() {
+                this.setLoading(true);
+                this.clearError();
+                if (this.fetchRateBtn) {
+                    this.fetchRateBtn.disabled = true;
+                    this.fetchRateBtn.innerHTML = '<i class="pi pi-spin pi-spinner"></i> جاري الجلب...';
+                }
+
+                try {
+                    const response = await fetch('/api/currency-rates');
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    const rate = data.rates.SYR;
+                    
+                    if (rate) {
+                        this.manualRate = rate;
+                        this.manualRateInput.value = rate;
+                        this.saveRateToStorage();
+                        
+                        if (this.products.length > 0) {
+                            this.convertPrices();
+                            this.displayProducts();
+                        }
+                    } else {
+                        throw new Error('Rate not found in response');
+                    }
+                } catch (error) {
+                    console.error('Error fetching live rate:', error);
+                    this.showError('فشل في جلب سعر الصرف الحالي. يرجى إدخال السعر يدوياً.');
+                } finally {
+                    this.setLoading(false);
+                    if (this.fetchRateBtn) {
+                        this.fetchRateBtn.disabled = false;
+                        this.fetchRateBtn.innerHTML = '<i class="pi pi-refresh"></i> جلب السعر الحالي';
+                    }
+                }
+            }
+
+            displayProducts() {
+                console.log('displayProducts called with', this.products.length, 'products');
+                if (this.products.length === 0) {
+                    this.resultsSection.classList.add('hidden');
+                    this.instructionsDiv.classList.remove('hidden');
+                    return;
+                }
+
+                this.resultsTitle.textContent = `المنتجات المحولة (${this.products.length} منتج)`;
+                this.productsTableBody.innerHTML = '';
+
+                this.products.forEach(product => {
+                    const row = document.createElement('tr');
+                    
+                    const nameCell = document.createElement('td');
+                    nameCell.textContent = product.name;
+                    row.appendChild(nameCell);
+
+                    const usdCell = document.createElement('td');
+                    usdCell.textContent = `$${product.originalPrice.toFixed(2)}`;
+                    row.appendChild(usdCell);
+
+                    const syrCell = document.createElement('td');
+                    if (product.convertedPrice !== undefined) {
+                        syrCell.textContent = `${product.convertedPrice.toFixed(2)} ليرة`;
+                    } else {
+                        syrCell.innerHTML = '<span class="loading-price"><i class="pi pi-spin pi-spinner"></i></span>';
+                    }
+                    row.appendChild(syrCell);
+
+                    const sellingCell = document.createElement('td');
+                    if (product.sellingPrice !== undefined) {
+                        sellingCell.textContent = `${product.sellingPrice.toFixed(2)} ليرة`;
+                    } else {
+                        sellingCell.innerHTML = '<span class="loading-price"><i class="pi pi-spin pi-spinner"></i></span>';
+                    }
+                    row.appendChild(sellingCell);
+
+                    this.productsTableBody.appendChild(row);
+                });
+
+                this.resultsSection.classList.remove('hidden');
+                this.instructionsDiv.classList.add('hidden');
+            }
+
+            downloadConvertedData() {
+                if (this.products.length === 0) return;
+
+                const data = this.products.map(product => ({
+                    'Product Name': product.name,
+                    'Price (USD)': product.originalPrice,
+                    'Price (SYR)': product.convertedPrice,
+                    'Selling Price (SYR)': product.sellingPrice
+                }));
+
+                const worksheet = XLSX.utils.json_to_sheet(data);
+                const workbook = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(workbook, worksheet, 'USD to SYR Products');
+                
+                XLSX.writeFile(workbook, `المنتجات_دولار_ليرة.xlsx`);
+            }
+
+            setLoading(loading) {
+                this.isLoading = loading;
+                if (loading) {
+                    this.loadingDiv.classList.remove('hidden');
+                } else {
+                    this.loadingDiv.classList.add('hidden');
+                }
+            }
+
+            showError(message) {
+                this.errorMessage = message;
+                this.errorText.textContent = message;
+                this.errorMessageDiv.classList.remove('hidden');
+            }
+
+            clearError() {
+                this.errorMessage = '';
+                this.errorMessageDiv.classList.add('hidden');
+            }
+        }
+
+        // Initialize the application when the page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            new ExcelImportApp();
+        });
+    </script>
+</body>
+</html> 
